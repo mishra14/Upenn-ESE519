@@ -1,0 +1,21 @@
+#include <hidef.h>      /* common defines and macros */
+#include "derivative.h"      /* derivative-specific definitions */
+
+
+
+void main(void) {
+   int n=0;
+   DDRB|=0x40;
+   PORTB|=0x40;
+   DDRT|=0x04;
+  while(1) {
+  
+    
+   if(PTIT&0x04) {
+    PORTB|=0x40;
+   } else {
+    PORTB&=~(0x40);
+   }
+    
+  }
+}
