@@ -1,0 +1,111 @@
+#include <hidef.h>      /* common defines and macros */
+#include "derivative.h"      /* derivative-specific definitions */
+#include "termio.h"
+#include "stdio.h"
+#include "stdlib.h"
+
+unsigned int keyPressed, rowHigh;
+unsigned int freqCount;
+unsigned int timeCount;
+unsigned int timeOverflow, overflow;
+unsigned int freqValue;
+unsigned int timeValue;
+char input[10];
+char freq[10];
+char time[15];
+char * inputPtr=&input;
+char * freqPtr=&freq;
+char * timePtr=&time;
+char decode[4][4]={{'1','2','3','A'},{'4','5','6','B'},{'7','8','9','C'},{'*','0','#','D'}};
+void	interrupt	11	OC3ISR(	){    //ISR for generating square waves
+	TFLG1	|=	0x08;	
+	TC3=TCNT+freqCount;
+	//printf("Hello\n");
+}
+
+void	interrupt	8	OC0ISR(	){     //ISR to measure time duration to stop the square wave
+	TFLG1	|=	0x01;	
+	overflow++;
+	if(overflow<timeOverflow) {
+	 TC0=TCNT+65536; 
+	} else if(overflow==timeOverflow) {
+	 TC0=TCNT+timeCount ;
+	} else {
+   TCTL2 &= ~(0xB0);
+   TIE &= ~(0x09);
+   TIOS &= ~(0x09);
+	}
+	//printf("Hello\n");
+}
+
+char keyDecode(int keyPressed, int rowHigh) {
+ int row,column;
+ switch(keyPressed) {
+  case 16:
+    column=0;
+    break;
+  case 32:
+    column=1;
+    break;
+  case 64:
+    column=2;
+    break;
+  case 128:
+    column=3;
+    break;
+  default:
+    column=-1;
+    break;
+ }
+ switch(rowHigh) {
+  case 1:
+    row=0;
+    break;
+  case 2:
+    row=1;
+    break;
+  case 4:
+    row=2;
+    break;
+  case 8:
+    row=3;
+    break;
+  default:
+    row=-1;
+    break;
+ }
+ return (row>=0 && column>=0)?decode[row][column]:'';
+}
+
+void main(void) {
+  /* put your own code here */
+  int i=0;
+  TERMIO_Init();
+  DDRT |= 0x08;
+  PTT = 0x00;
+  DDRB |= 0x0f;
+  PORTB |= 0x00;
+  TSCR1 |= 0x80;
+  TC3=10000;
+  TC0=10000;
+  EnableInterrupts;
+  PORTB=0x02;
+  while(1) {
+    for(i=0;i<7000; i++);
+    //printf(". %d",PORTB);
+    //detect if a key is pressed
+    keyPressed = PORTB & 0xf0;
+    rowHigh = PORTB & 0x0f;
+    if(keyPressed!=0) {
+      //printf("%d %d ",keyPressed, PORTB);
+      printf("%c\n",keyDecode(keyPressed, rowHigh));
+   
+    }
+
+    if(PORTB==0x08 || PORTB==0x00) {
+      PORTB=0x01;
+    } else {
+      PORTB=PORTB<<1;
+    }
+  }
+}

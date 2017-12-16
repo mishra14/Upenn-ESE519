@@ -1,0 +1,30 @@
+#include <hidef.h>      /* common defines and macros */
+#include "derivative.h"      /* derivative-specific definitions */
+#include "termio.h"
+#include "stdio.h"
+
+unsigned int count = 2272;
+
+void	interrupt	11	OC3ISR(	){
+	TFLG1	|=	0x08;	
+	TC3=TCNT+count;
+	//printf("Hello\n");
+}
+
+void main(void) {
+  /* put your own code here */
+  TERMIO_Init();
+  DDRT |= 0x08;
+  PTT |= 0x08;
+  DDRB |= 0x01;
+  PORTB |= 0x01;
+  TIOS |= 0x08;
+  TCTL2|= 0x40;
+  TIE |= 0x08;
+  TC3=TCNT+count;
+  TSCR1 |= 0x80;
+  EnableInterrupts;
+  while(1) {
+    
+  }
+}
