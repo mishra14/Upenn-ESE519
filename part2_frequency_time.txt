@@ -1,0 +1,69 @@
+#include <hidef.h>      /* common defines and macros */
+#include "derivative.h"      /* derivative-specific definitions */
+#include "termio.h"
+#include "stdio.h"
+#include "stdlib.h"
+
+unsigned int freqCount;
+unsigned int timeCount;
+unsigned int timeOverflow, overflow;
+unsigned int freqValue;
+unsigned int timeValue;
+char input[10];
+char freq[10];
+char time[15];
+char * inputPtr=&input;
+char * freqPtr=&freq;
+char * timePtr=&time;
+
+void	interrupt	11	OC3ISR(	){    //ISR for generating square waves
+	TFLG1	|=	0x08;	
+	TC3=TCNT+freqCount;
+	//printf("Hello\n");
+}
+
+void	interrupt	8	OC0ISR(	){     //ISR to measure time duration to stop the square wave
+	TFLG1	|=	0x01;	
+	overflow++;
+	if(overflow<timeOverflow) {
+	 TC0=TCNT+65536; 
+	} else if(overflow==timeOverflow) {
+	 TC0=TCNT+timeCount ;
+	} else {
+   TCTL2 &= ~(0xB0);
+   TIE &= ~(0x09);
+   TIOS &= ~(0x09);
+	}
+	//printf("Hello\n");
+}
+
+void main(void) {
+  /* put your own code here */
+  TERMIO_Init();
+  DDRT |= 0x08;
+  PTT = 0x00;
+  DDRB |= 0x01;
+  PORTB |= 0x01;
+  TSCR1 |= 0x80;
+  TC3=10000;
+  TC0=10000;
+  EnableInterrupts;
+  while(1) {
+    TERM_ReadString(inputPtr, 25);
+    sscanf(inputPtr,"%s %s",freq, time);
+    printf("\n---%s %s\n",freq, time);
+    freqValue=atoi(freqPtr);
+    timeValue=atoi(timePtr);
+    printf("\n--->%d %d\n",freqValue, timeValue);
+    freqCount=1000000/freqValue;
+    timeOverflow=timeValue/33;
+    timeCount=timeValue%33;
+    TC3=TCNT+ freqCount;
+    TC0=TCNT+(timeOverflow>0?65535:timeCount);     //full count if overflow is needed else load the diff needed
+    overflow=0;
+    TCTL2|= 0x40;
+    TIE |= 0x09;
+    TIOS = 0x09;
+    
+  }
+}
